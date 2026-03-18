@@ -56,7 +56,7 @@ x = np.arange(len(labels))
 width = 0.35  
 
 fig, axes = plt.subplots(1, 3, figsize=(18, 6), sharey=True)
-fig.suptitle('Rossano 2017: Pre vs Post-Fire Peak Discharge', fontsize=18, fontweight='bold', y=0.98)
+# Title removed as requested
 
 scenarios = [
     (pre_100, post_100, '100mm Scenario'),
@@ -72,7 +72,7 @@ for i, ax in enumerate(axes):
     rects1 = ax.bar(x - width/2, pre_vals, width, label='Pre-Fire (Baseline)', color='lightgrey', edgecolor='black')
     rects2 = ax.bar(x + width/2, post_vals, width, color=post_colors, edgecolor='black')
     
-    # Add the 97.0 m3/s historical validation line
+    # Add the 97.0 m3/s ARPACAL Estimate line
     ax.axhline(y=97.0, color='blue', linestyle='--', linewidth=2.5)
 
     ax.set_title(title, fontsize=15, fontweight='bold')
@@ -92,9 +92,11 @@ for i, ax in enumerate(axes):
 
 axes[0].set_ylabel('Peak Discharge ($m^3/s$)', fontsize=13)
 
+# ==========================================
 # 5. LEGEND
+# ==========================================
 legend_elements = [
-    Line2D([0], [0], color='blue', lw=2.5, linestyle='--', label='Observed (97.0 m³/s)'),
+    Line2D([0], [0], color='blue', lw=2.5, linestyle='--', label='ARPACAL Estimate (97.0 m³/s)'),
     Patch(facecolor='lightgrey', edgecolor='black', label='Pre-Fire (Baseline)'),
     Patch(facecolor='#66c2a5', edgecolor='black', label='Post-Fire (Good)'),
     Patch(facecolor='#ffcc99', edgecolor='black', label='Post-Fire (Fair)'),
@@ -102,5 +104,5 @@ legend_elements = [
 ]
 axes[0].legend(handles=legend_elements, loc='upper left', fontsize=10, framealpha=1, edgecolor='black')
 
-plt.tight_layout(rect=[0, 0, 1, 0.93]) 
+plt.tight_layout() 
 plt.show()
