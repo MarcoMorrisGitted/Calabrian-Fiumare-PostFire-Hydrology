@@ -12,7 +12,6 @@ path_f_poor = r"C:\Localdata\Dissertation\From_Scratch\HEC_Sheets\Fiume24_result
 
 def extract_peak(file_path, sheet_name):
     """Targets Column C and pulls the MAX value (the Peak)."""
-    # Changed file_name to sheet_name below:
     df = pd.read_excel(file_path, sheet_name=sheet_name, usecols=[0, 2], names=["Name", "Peak"])
     
     df_clean = df.dropna(subset=['Name'])
@@ -37,6 +36,7 @@ f_fair_post = extract_peak(path_f_fair, "500mm")
 
 f_poor_pre  = extract_peak(path_f_poor, "500mm(PRE)")
 f_poor_post = extract_peak(path_f_poor, "500mm")
+
 # ==========================================
 # 3. PLOTTING THE VALIDATION GRAPH
 # ==========================================
@@ -62,10 +62,10 @@ ax.bar(x[1] + width/2, post_peaks[1], width, color='#2d4f4f', edgecolor='black',
 ax.bar(x[2] + width/2, post_peaks[2], width, color='#66c2a5', edgecolor='black', label='Fiume Post-Fire (Fair)')
 ax.bar(x[3] + width/2, post_peaks[3], width, color='#f08080', edgecolor='black', label='Fiume Post-Fire (Poor)')
 
-# VALIDATION LINE
-reality = 97
-ax.axhline(y=reality, color='blue', linestyle='--', linewidth=2, label=f'Reality ({reality} m³/s)')
-ax.text(3.4, reality + 1.5, f'Reality ({reality} m³/s)', color='blue', fontweight='bold', ha='right')
+# VALIDATION LINE (Updated to reflect critical analysis)
+arpacal_benchmark = 97
+ax.axhline(y=arpacal_benchmark, color='blue', linestyle='--', linewidth=2, label=f'ARPACAL Benchmark ({arpacal_benchmark} m³/s)')
+ax.text(3.4, arpacal_benchmark + 1.5, f'ARPACAL Benchmark ({arpacal_benchmark} m³/s)', color='blue', fontweight='bold', ha='right')
 
 # Adding the Peak Value Labels on top
 for i in range(len(labels)):
