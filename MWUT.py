@@ -12,82 +12,74 @@ paths = {
     'F_Poor': r"C:\Localdata\Dissertation\From_Scratch\HEC_Sheets\Fiume24_results_poor.xlsx"
 }
 
-sheet_indices = {'230mm': 4, '500mm': 5} # 4=230mm PRE, 5=500mm PRE
+# Post-Fire: 1=230, 2=500 | Pre-Fire: 4=230, 5=500
+scenarios = {
+    '230mm': {'post': 1, 'pre': 4},
+    '500mm': {'post': 2, 'pre': 5}
+}
 
-def extract_rigorous_data(path, sheet_idx):
-    """
-    Extracts data, filters out HEC-HMS micro-basin noise (< 0.1 km2), 
-    and returns Absolute Peak and Specific Peak arrays.
-    """
+def extract_data(path, sheet_idx):
     df = pd.read_excel(path, sheet_name=sheet_idx)
-    
-    # Isolate Subbasins only
     df_sub = df[df.iloc[:, 0].astype(str).str.contains('Subbasin', case=False, na=False)]
     
-    area = pd.to_numeric(df_sub.iloc[:, 1], errors='coerce').values
-    peak = pd.to_numeric(df_sub.iloc[:, 2], errors='coerce').values
+    area = pd.to_numeric(df_sub.iloc[:, 1], errors='coerce').values # Col B
+    peak = pd.to_numeric(df_sub.iloc[:, 2], errors='coerce').values # Col C
     
-    # FILTER: Only keep subbasins with Area >= 0.1 km2 and valid peak flows
     mask = (area >= 0.1) & (~np.isnan(area)) & (~np.isnan(peak))
-    
-    valid_area = area[mask]
     abs_peak = peak[mask]
-    
-    # Calculate Specific Peak (m3/s/km2)
-    spec_peak = abs_peak / valid_area
+    spec_peak = abs_peak / area[mask]
     
     return abs_peak, spec_peak
 
-def run_proper_mwut(val_f, val_r, label, rain):
+def run_mwut(val_f, val_r, label, rain):
     if len(val_f) < 3 or len(val_r) < 3:
-        return f"{label:<35}\t{rain:<6}\tERROR: Insufficient Data"
+        return f"{label:<45}\t{rain:<6}\tERROR: Insufficient Data"
         
     stat, p = mannwhitneyu(val_f, val_r, alternative='two-sided')
-    
-    m_f = np.mean(val_f)
-    m_r = np.mean(val_r)
+    m_f, m_r = np.mean(val_f), np.mean(val_r)
     diff = ((m_r - m_f) / m_f) * 100
+    direction = "Fiume Higher" if m_f > m_r else "Rossano Higher"
     
-    sig = "SIGNIFICANT" if p < 0.05 else "Not Sig"
-    direction = "Rossano Higher" if m_r > m_f else "Fiume Higher"
-    
-    return f"{label:<35}\t{rain:<6}\t{p:<10.4f}\t{diff:>8.2f}%\t{sig}: {direction}"
+    return f"{label:<45}\t{rain:<6}\t{p:<10.4f}\t{diff:>8.2f}%\t{direction}"
 
 # ==========================================
 # 2. EXECUTION
 # ==========================================
-print("TABLE 1: ABSOLUTE PEAK DISCHARGE (m3/s) - All Active Subbasins (>= 0.1 km2)")
-print("COMPARISON SCENARIO\tRAIN\tP-VALUE\tMEAN DIFF\tRESULT")
-for rain, idx in sheet_indices.items():
-    rf_abs, _ = extract_rigorous_data(paths['R_Fair'], idx)
-    ff_abs, _ = extract_rigorous_data(paths['F_Fair'], idx)
-    print(run_proper_mwut(ff_abs, rf_abs, "Fair vs Fair (Natural Baseline)", rain))
+for mode in ["ABSOLUTE", "SPECIFIC"]:
+    print(f"\n--- {mode} PEAK DISCHARGE RESULTS ---")
+    print(f"{'COMPARISON SCENARIO':<45}\tRAIN\tP-VALUE\tDIFF\tDIRECTION")
+    
+    is_spec = (mode == "SPECIFIC")
 
-for rain, idx in sheet_indices.items():
-    rp_abs, _ = extract_rigorous_data(paths['R_Poor'], idx)
-    fp_abs, _ = extract_rigorous_data(paths['F_Poor'], idx)
-    print(run_proper_mwut(fp_abs, rp_abs, "Poor vs Poor (Degraded Baseline)", rain))
+    for rain, sheets in scenarios.items():
+        # 1. FAIR vs FAIR (PRE)
+        r_abs, r_spec = extract_data(paths['R_Fair'], sheets['pre'])
+        f_abs, f_spec = extract_data(paths['F_Fair'], sheets['pre'])
+        print(run_mwut(f_spec if is_spec else f_abs, r_spec if is_spec else r_abs, "Fair vs Fair (PRE-FIRE)", rain))
 
-for rain, idx in sheet_indices.items():
-    rf_abs, _ = extract_rigorous_data(paths['R_Fair'], idx)
-    fp_abs, _ = extract_rigorous_data(paths['F_Poor'], idx)
-    print(run_proper_mwut(fp_abs, rf_abs, "Realism: Ross(Fair) v Fiume(Poor)", rain))
+        # 2. FAIR vs FAIR (POST)
+        r_abs, r_spec = extract_data(paths['R_Fair'], sheets['post'])
+        f_abs, f_spec = extract_data(paths['F_Fair'], sheets['post'])
+        print(run_mwut(f_spec if is_spec else f_abs, r_spec if is_spec else r_abs, "Fair vs Fair (POST-FIRE)", rain))
 
-print("\n" + "="*80 + "\n")
+        # 3. POOR vs POOR (PRE)
+        r_abs, r_spec = extract_data(paths['R_Poor'], sheets['pre'])
+        f_abs, f_spec = extract_data(paths['F_Poor'], sheets['pre'])
+        print(run_mwut(f_spec if is_spec else f_abs, r_spec if is_spec else r_abs, "Poor vs Poor (PRE-FIRE)", rain))
 
-print("TABLE 2: SPECIFIC PEAK DISCHARGE (m3/s/km2) - All Active Subbasins (>= 0.1 km2)")
-print("COMPARISON SCENARIO\tRAIN\tP-VALUE\tMEAN DIFF\tRESULT")
-for rain, idx in sheet_indices.items():
-    _, rf_spec = extract_rigorous_data(paths['R_Fair'], idx)
-    _, ff_spec = extract_rigorous_data(paths['F_Fair'], idx)
-    print(run_proper_mwut(ff_spec, rf_spec, "Fair vs Fair (Natural Baseline)", rain))
+        # 4. POOR vs POOR (POST)
+        r_abs, r_spec = extract_data(paths['R_Poor'], sheets['post'])
+        f_abs, f_spec = extract_data(paths['F_Poor'], sheets['post'])
+        print(run_mwut(f_spec if is_spec else f_abs, r_spec if is_spec else r_abs, "Poor vs Poor (POST-FIRE)", rain))
 
-for rain, idx in sheet_indices.items():
-    _, rp_spec = extract_rigorous_data(paths['R_Poor'], idx)
-    _, fp_spec = extract_rigorous_data(paths['F_Poor'], idx)
-    print(run_proper_mwut(fp_spec, rp_spec, "Poor vs Poor (Degraded Baseline)", rain))
+        # 5. FIUME POOR vs ROSSANO FAIR (PRE)
+        r_abs, r_spec = extract_data(paths['R_Fair'], sheets['pre'])
+        f_abs, f_spec = extract_data(paths['F_Poor'], sheets['pre'])
+        print(run_mwut(f_spec if is_spec else f_abs, r_spec if is_spec else r_abs, "Fiume(Poor PRE) v Ross(Fair PRE)", rain))
 
-for rain, idx in sheet_indices.items():
-    _, rf_spec = extract_rigorous_data(paths['R_Fair'], idx)
-    _, fp_spec = extract_rigorous_data(paths['F_Poor'], idx)
-    print(run_proper_mwut(fp_spec, rf_spec, "Realism: Ross(Fair) v Fiume(Poor)", rain))
+        # 6. FIUME POOR vs ROSSANO FAIR (POST)
+        r_abs, r_spec = extract_data(paths['R_Fair'], sheets['post'])
+        f_abs, f_spec = extract_data(paths['F_Poor'], sheets['post'])
+        print(run_mwut(f_spec if is_spec else f_abs, r_spec if is_spec else r_abs, "Fiume(Poor POST) v Ross(Fair POST)", rain))
+        
+        print("-" * 110)
